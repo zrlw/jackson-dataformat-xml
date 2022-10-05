@@ -13,12 +13,13 @@ import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.core.JsonTokenId;
 import com.fasterxml.jackson.databind.BeanDescription;
 import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.deser.BeanDeserializer;
 import com.fasterxml.jackson.databind.deser.BeanDeserializerBuilder;
 import com.fasterxml.jackson.databind.deser.SettableBeanProperty;
 import com.fasterxml.jackson.databind.deser.impl.BeanPropertyMap;
 import com.fasterxml.jackson.databind.deser.impl.MethodProperty;
-import com.fasterxml.jackson.databind.deser.std.StringDeserializer;
+import com.fasterxml.jackson.databind.deser.std.DelegatingDeserializer;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
 import com.fasterxml.jackson.dataformat.xml.util.XmlUtil;
 
@@ -121,8 +122,11 @@ public class ObjectMapBeanDeserializer extends BeanDeserializer {
 
                 if (prop != null) { // normal case
                     boolean isComplex = false;
+                    JsonDeserializer<Object> deser = prop.getValueDeserializer();
                     if (prop instanceof MethodProperty
-                            && prop.getNullValueProvider() instanceof StringDeserializer) {
+                        && !(deser instanceof ObjectMapBeanDeserializer)
+                        && !(deser instanceof DelegatingDeserializer
+                            && ((DelegatingDeserializer) deser).getDelegatee() instanceof ObjectMapBeanDeserializer)) {
                         MethodProperty methodProp = (MethodProperty) prop;
                         JacksonXmlProperty xmlProp = methodProp.getAnnotation(JacksonXmlProperty.class);
                         if (xmlProp == null) {
