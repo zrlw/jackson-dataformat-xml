@@ -25,6 +25,8 @@ public class XmlUtil {
 
     public static final String COMPLEX_NODE_TEXT_TAG = "__text";
 
+    public static final String DEFAULT_NAMESPACE_PREFIX = "ns";
+    
     private static final NamespaceXmlMapper NAMESPACE_XML_MAPPER = new NamespaceXmlMapper();
 
     private static final ObjectMapXmlMapper OBJECTMAP_XML_MAPPER = new ObjectMapXmlMapper();

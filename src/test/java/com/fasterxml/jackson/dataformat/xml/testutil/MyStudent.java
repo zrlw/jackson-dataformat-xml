@@ -7,7 +7,7 @@ import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
  * @author zrlw@sina.com
  * @date 2022/10/04
  */
-@JacksonXmlRootElement(localName = "my:Student", namespace = "http://my.com")
+@JacksonXmlRootElement(localName = "Student", namespace = "http://my.com")
 public class MyStudent {
     private String name;
     
@@ -17,7 +17,7 @@ public class MyStudent {
     @JacksonXmlProperty(localName = "xyz:FeeA", namespace = "http://xyz")
     private MyCurrency fee1;
     
-    @JacksonXmlProperty(localName = "xyz:FeeB", namespace = "http://xyz")
+    @JacksonXmlProperty(localName = "soap:FeeB")
     private MyCurrency fee2;
     
     public String getName() {

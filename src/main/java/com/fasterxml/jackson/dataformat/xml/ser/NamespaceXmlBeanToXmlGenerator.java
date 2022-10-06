@@ -1,6 +1,8 @@
 package com.fasterxml.jackson.dataformat.xml.ser;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
@@ -16,14 +18,16 @@ import com.fasterxml.jackson.dataformat.xml.util.StaxUtil;
  */
 public class NamespaceXmlBeanToXmlGenerator extends ToXmlGenerator {
 
+    private Map<String, String> namespaceMap = new HashMap<>();
+
     public NamespaceXmlBeanToXmlGenerator(IOContext ctxt, int stdFeatures, int xmlFeatures,
             ObjectCodec codec,
             XMLStreamWriter sw, XmlNameProcessor nameProcessor) {
         super(ctxt, stdFeatures, xmlFeatures, codec, sw, nameProcessor);
     }
 
-    public String getNameSpace() {
-        return _nextName.getNamespaceURI();
+    public String getNamespace(String prefix) {
+        return namespaceMap.get(prefix);
     }
 
     @Override
@@ -54,8 +58,12 @@ public class NamespaceXmlBeanToXmlGenerator extends ToXmlGenerator {
                         _nextName.getNamespaceURI(), _nextName.getLocalPart(),
                         text, _nextIsCData);
             } else {
-                _xmlWriter.writeStartElement(_nextName.getPrefix(), _nextName.getLocalPart(),
-                    _nextName.getNamespaceURI());
+                if (_nextName.getPrefix().isEmpty()) {
+                    _xmlWriter.writeStartElement(_nextName.getNamespaceURI(), _nextName.getLocalPart());
+                } else {
+                    _xmlWriter.writeStartElement(_nextName.getPrefix(), _nextName.getLocalPart(),
+                        _nextName.getNamespaceURI());
+                }
                 if(_nextIsCData) {
                     _xmlWriter.writeCData(text);
                 } else {
@@ -88,10 +96,15 @@ public class NamespaceXmlBeanToXmlGenerator extends ToXmlGenerator {
         _elementNameStack.addLast(_nextName);
         try {
             if (!_nextName.getPrefix().isEmpty() && !_nextName.getNamespaceURI().isEmpty()) {
+                namespaceMap.put(_nextName.getPrefix(), _nextName.getNamespaceURI());
                 _xmlWriter.setPrefix(_nextName.getPrefix(), _nextName.getNamespaceURI());
             }
-            _xmlWriter.writeStartElement(_nextName.getPrefix(), _nextName.getLocalPart(),
-                _nextName.getNamespaceURI());
+            if (_nextName.getPrefix().isEmpty()) {
+                _xmlWriter.writeStartElement(_nextName.getNamespaceURI(), _nextName.getLocalPart());
+            } else {
+                _xmlWriter.writeStartElement(_nextName.getPrefix(), _nextName.getLocalPart(),
+                    _nextName.getNamespaceURI());
+            }
         } catch (XMLStreamException e) {
             StaxUtil.throwAsGenerationException(e, this);
         }

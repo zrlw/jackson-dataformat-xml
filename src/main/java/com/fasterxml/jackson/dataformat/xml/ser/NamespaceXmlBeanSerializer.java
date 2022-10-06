@@ -82,15 +82,20 @@ public class NamespaceXmlBeanSerializer extends XmlBeanSerializer {
         }
 
         if (g instanceof TokenBuffer && xmlName != null) {
-            if (!xmlName.getPrefix().isEmpty()) {
+            String prefix = xmlName.getPrefix();
+            if (!prefix.isEmpty()) {
                 g.writeFieldName(XmlUtil.NAMESPACE_PREFIX_TAG);
-                g.writeString(xmlName.getPrefix());
+                g.writeString(prefix);
+            } else if (!xmlName.getNamespaceURI().isEmpty()) {
+                prefix = XmlUtil.DEFAULT_NAMESPACE_PREFIX + xmlName.getNamespaceURI().hashCode();
+                g.writeFieldName(XmlUtil.NAMESPACE_PREFIX_TAG);
+                g.writeString(prefix);
             }
 
             if (!xmlName.getNamespaceURI().isEmpty()) {
                 g.writeFieldName(XmlUtil.NAMESPACES_TAG);
                 g.writeStartObject();
-                g.writeFieldName(xmlName.getPrefix());
+                g.writeFieldName(prefix);
                 g.writeString(xmlName.getNamespaceURI());
                 g.writeEndObject();
             }
@@ -120,15 +125,20 @@ public class NamespaceXmlBeanSerializer extends XmlBeanSerializer {
         }
 
         if (gen instanceof TokenBuffer && xmlName != null) {
-            if (!xmlName.getPrefix().isEmpty()) {
+            String prefix = xmlName.getPrefix();
+            if (!prefix.isEmpty()) {
                 gen.writeFieldName(XmlUtil.NAMESPACE_PREFIX_TAG);
-                gen.writeString(xmlName.getPrefix());
+                gen.writeString(prefix);
+            } else if (!xmlName.getNamespaceURI().isEmpty()) {
+                prefix = XmlUtil.DEFAULT_NAMESPACE_PREFIX + xmlName.getNamespaceURI().hashCode();
+                gen.writeFieldName(XmlUtil.NAMESPACE_PREFIX_TAG);
+                gen.writeString(prefix);
             }
 
             if (!xmlName.getNamespaceURI().isEmpty()) {
                 gen.writeFieldName(XmlUtil.NAMESPACES_TAG);
                 gen.writeStartObject();
-                gen.writeFieldName(xmlName.getPrefix());
+                gen.writeFieldName(prefix);
                 gen.writeString(xmlName.getNamespaceURI());
                 gen.writeEndObject();
             }
@@ -171,7 +181,6 @@ public class NamespaceXmlBeanSerializer extends XmlBeanSerializer {
         final QName[] xmlNames = _xmlNames;
         int i = 0;
         final BitSet cdata = _cdata;
-        final String currentNamespace = xgen.getNameSpace();
 
         try {
             final boolean isAttribute = XmlUtil.getFieldValue("_nextIsAttribute", ToXmlGenerator.class, xgen);
@@ -190,8 +199,13 @@ public class NamespaceXmlBeanSerializer extends XmlBeanSerializer {
                 if (props[i] != null) { // can have nulls in filtered list
                     if (beanProps[i] == null) {
                         if (!xmlNames[i].getPrefix().isEmpty() && xmlNames[i].getNamespaceURI().isEmpty()) {
-                            beanProps[i] = new NamespaceXmlBeanPropertyWriter(props[i],
-                                new QName(currentNamespace, xmlNames[i].getLocalPart(), xmlNames[i].getPrefix()));
+                            String namespace = xgen.getNamespace(xmlNames[i].getPrefix());
+                            if (namespace != null) {
+                                beanProps[i] = new NamespaceXmlBeanPropertyWriter(props[i],
+                                    new QName(namespace, xmlNames[i].getLocalPart(), xmlNames[i].getPrefix()));
+                            } else {
+                                beanProps[i] = new NamespaceXmlBeanPropertyWriter(props[i], xmlNames[i]);
+                            }
                         } else {
                             beanProps[i] = new NamespaceXmlBeanPropertyWriter(props[i], xmlNames[i]);
                         }
