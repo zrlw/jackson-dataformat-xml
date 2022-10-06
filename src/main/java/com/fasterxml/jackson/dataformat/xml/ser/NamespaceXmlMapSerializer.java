@@ -94,9 +94,9 @@ public class NamespaceXmlMapSerializer extends MapSerializer {
                     namespace = xmlRootElem.namespace();
                 }
 
-                if (gen instanceof ToXmlGenerator) {
-                    nextName = new QName(namespace, (String)keyElem);
-                    ((ToXmlGenerator)gen).setNextName(nextName);
+                if (gen instanceof NamespaceXmlBeanToXmlGenerator) {
+                    nextName = new QName(namespace, (String)keyElem, prefix);
+                    ((NamespaceXmlBeanToXmlGenerator) gen).setNextName(nextName);
                 } else if (gen instanceof TokenBuffer && valueSer instanceof NamespaceXmlBeanSerializer) {
                     nextName = new QName(namespace, (String)keyElem, prefix);
                 }
@@ -105,7 +105,11 @@ public class NamespaceXmlMapSerializer extends MapSerializer {
             // and then serialize, if all went well
             try {
                 keySerializer.serialize(keyElem, gen, provider);
-                if (gen instanceof TokenBuffer && valueSer instanceof NamespaceXmlBeanSerializer) {
+                if (gen instanceof NamespaceXmlBeanToXmlGenerator) {
+                    // reset next name to restore prefix because it was removed at keySerializer#serialize.
+                    ((NamespaceXmlBeanToXmlGenerator) gen).setNextName(nextName);
+                    valueSer.serialize(valueElem, gen, provider);
+                } else if (gen instanceof TokenBuffer && valueSer instanceof NamespaceXmlBeanSerializer) {
                     ((NamespaceXmlBeanSerializer)valueSer).serialize(valueElem, gen, provider, nextName);
                 } else {
                     valueSer.serialize(valueElem, gen, provider);

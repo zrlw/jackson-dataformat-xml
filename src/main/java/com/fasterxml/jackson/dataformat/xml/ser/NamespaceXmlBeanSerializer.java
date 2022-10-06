@@ -5,8 +5,6 @@ import java.util.BitSet;
 
 import javax.xml.namespace.QName;
 
-import org.apache.commons.lang3.StringUtils;
-
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.core.type.WritableTypeId;
@@ -19,7 +17,6 @@ import com.fasterxml.jackson.databind.jsontype.TypeSerializer;
 import com.fasterxml.jackson.databind.ser.AnyGetterWriter;
 import com.fasterxml.jackson.databind.ser.BeanPropertyWriter;
 import com.fasterxml.jackson.databind.ser.std.MapSerializer;
-import com.fasterxml.jackson.databind.util.NameTransformer;
 import com.fasterxml.jackson.databind.util.TokenBuffer;
 import com.fasterxml.jackson.dataformat.xml.util.XmlUtil;
 
@@ -35,7 +32,7 @@ public class NamespaceXmlBeanSerializer extends XmlBeanSerializer {
 
     private BeanPropertyWriter[] beanProps = null;
 
-    private NamespaceXmlBeanPropertyWriter[] namespaceProps = null;
+    private NamespaceXmlBeanTokenBufferWriter[] namespaceProps = null;
 
     public NamespaceXmlBeanSerializer(XmlBeanSerializer src) {
         super(src, null);
@@ -49,6 +46,26 @@ public class NamespaceXmlBeanSerializer extends XmlBeanSerializer {
                 _xmlNames[i] = new QName(qname.getNamespaceURI(), localPart, prefix);
             }
         }
+    }
+
+    @Override
+    public void serialize(Object bean, JsonGenerator g, SerializerProvider provider) throws IOException
+    {
+        if (_objectIdWriter != null) {
+            _serializeWithObjectId(bean, g, provider, true);
+            return;
+        }
+        if (g instanceof NamespaceXmlBeanToXmlGenerator) {
+            ((NamespaceXmlBeanToXmlGenerator) g).writeStartNamespaceObject();
+        } else {
+            g.writeStartObject();
+        }
+        if (_propertyFilterId != null) {
+            serializeFieldsFiltered(bean, g, provider);
+        } else {
+            serializeFields(bean, g, provider);
+        }
+        g.writeEndObject();
     }
 
     public void serialize(Object bean, JsonGenerator g, SerializerProvider provider, QName xmlName) throws IOException
@@ -130,11 +147,11 @@ public class NamespaceXmlBeanSerializer extends XmlBeanSerializer {
         }
 
         // 19-Aug-2013, tatu: During 'convertValue()', need to skip
-        if (!(gen0 instanceof ToXmlGenerator)) {
+        if (!(gen0 instanceof NamespaceXmlBeanToXmlGenerator)) {
             super.serializeFields(bean, gen0, provider);
             return;
         }
-        final ToXmlGenerator xgen = (ToXmlGenerator) gen0;
+        final NamespaceXmlBeanToXmlGenerator xgen = (NamespaceXmlBeanToXmlGenerator) gen0;
         final BeanPropertyWriter[] props;
         if (_filteredProps != null && provider.getActiveView() != null) {
             props = _filteredProps;
@@ -154,6 +171,7 @@ public class NamespaceXmlBeanSerializer extends XmlBeanSerializer {
         final QName[] xmlNames = _xmlNames;
         int i = 0;
         final BitSet cdata = _cdata;
+        final String currentNamespace = xgen.getNameSpace();
 
         try {
             final boolean isAttribute = XmlUtil.getFieldValue("_nextIsAttribute", ToXmlGenerator.class, xgen);
@@ -169,27 +187,13 @@ public class NamespaceXmlBeanSerializer extends XmlBeanSerializer {
                     xgen.setNextIsUnwrapped(true);
                 }
                 xgen.setNextName(xmlNames[i]);
-                
                 if (props[i] != null) { // can have nulls in filtered list
                     if (beanProps[i] == null) {
-                        if (!StringUtils.isEmpty(xmlNames[i].getNamespaceURI())
-                            && !StringUtils.isEmpty(xmlNames[i].getPrefix())) {
-                            String localPart = xmlNames[i].getLocalPart();
-                            beanProps[i] = props[i].rename(new NameTransformer() {
-
-                                @Override
-                                public String transform(String name) {
-                                    return localPart;
-                                }
-
-                                @Override
-                                public String reverse(String transformed) {
-                                    return null;
-                                }
-
-                            });
+                        if (!xmlNames[i].getPrefix().isEmpty() && xmlNames[i].getNamespaceURI().isEmpty()) {
+                            beanProps[i] = new NamespaceXmlBeanPropertyWriter(props[i],
+                                new QName(currentNamespace, xmlNames[i].getLocalPart(), xmlNames[i].getPrefix()));
                         } else {
-                            beanProps[i] = props[i];
+                            beanProps[i] = new NamespaceXmlBeanPropertyWriter(props[i], xmlNames[i]);
                         }
                     }
                     BeanPropertyWriter prop = beanProps[i];
@@ -254,7 +258,7 @@ public class NamespaceXmlBeanSerializer extends XmlBeanSerializer {
         }
 
         if (namespaceProps == null) {
-            namespaceProps = new NamespaceXmlBeanPropertyWriter[props.length];
+            namespaceProps = new NamespaceXmlBeanTokenBufferWriter[props.length];
         }
 
         final int attrCount = _attributeCount;
@@ -269,7 +273,7 @@ public class NamespaceXmlBeanSerializer extends XmlBeanSerializer {
         try {
             for (final int len = props.length; i < len; ++i) {
                 BeanPropertyWriter prop = props[i];
-                NamespaceXmlBeanPropertyWriter namespaceProp = null;
+                NamespaceXmlBeanTokenBufferWriter namespaceProp = null;
                 if (prop != null) { // can have nulls in filtered list
                     if (namespaceProps[i] == null) {
                         QName xmlName = null;
@@ -278,7 +282,7 @@ public class NamespaceXmlBeanSerializer extends XmlBeanSerializer {
                         } else {
                             xmlName = xmlNames[i];
                         }
-                        namespaceProp = new NamespaceXmlBeanPropertyWriter(prop, xmlName);
+                        namespaceProp = new NamespaceXmlBeanTokenBufferWriter(prop, xmlName);
                         namespaceProps[i] = namespaceProp;
                     } else {
                         namespaceProp = namespaceProps[i];

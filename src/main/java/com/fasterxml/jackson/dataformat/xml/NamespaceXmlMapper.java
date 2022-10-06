@@ -14,7 +14,7 @@ public class NamespaceXmlMapper extends XmlMapper {
     private static final long serialVersionUID = -7996440124093069230L;
 
     public NamespaceXmlMapper() {
-         super(new XmlFactory(), new NamespaceXmlModule());
+         super(new NamespaceXmlFactory(), new NamespaceXmlModule());
 
          _deserializationConfig = _deserializationConfig
              .with(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY)

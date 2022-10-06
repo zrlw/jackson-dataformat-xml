@@ -8,16 +8,14 @@ import com.fasterxml.jackson.databind.PropertyName;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.ser.BeanPropertyWriter;
 import com.fasterxml.jackson.databind.ser.impl.PropertySerializerMap;
-import com.fasterxml.jackson.databind.util.TokenBuffer;
-import com.fasterxml.jackson.dataformat.xml.util.XmlUtil;
 
 /**
  * @author zrlw@sina.com
- * @date 2022/10/04
+ * @date 2022/10/06
  */
 public class NamespaceXmlBeanPropertyWriter extends BeanPropertyWriter {
 
-    private static final long serialVersionUID = -8057737354057297079L;
+    private static final long serialVersionUID = -6323509186594763963L;
 
     private QName _xmlName;
 
@@ -33,12 +31,18 @@ public class NamespaceXmlBeanPropertyWriter extends BeanPropertyWriter {
     @Override
     public void serializeAsField(Object bean, JsonGenerator gen,
             SerializerProvider prov) throws Exception {
+        
         // inlined 'get()'
         final Object value = (_accessorMethod == null) ? _field.get(bean)
                 : _accessorMethod.invoke(bean, (Object[]) null);
 
         // Null handling is bit different, check that first
         if (value == null) {
+            // 20-Jun-2022, tatu: Defer checking of null, see [databind#3481]
+            if((_suppressableValue != null)
+                    && prov.includeFilterSuppressNulls(_suppressableValue)) {
+                return;
+            }
             if (_nullSerializer != null) {
                 gen.writeFieldName(_name);
                 _nullSerializer.serialize(null, gen, prov);
@@ -73,78 +77,17 @@ public class NamespaceXmlBeanPropertyWriter extends BeanPropertyWriter {
             }
         }
 
-        String wrapperNamespace = "";
-        String wrapperLocalName = "";
-        String wrapperPrefix = "";
-        if (_wrapperName != null &&
-            _wrapperName.getSimpleName() != null && !_wrapperName.getSimpleName().isEmpty()) {
-            wrapperNamespace = _wrapperName.getNamespace();
-            wrapperLocalName = _wrapperName.getSimpleName();
-            int idx = wrapperLocalName.indexOf(':');
-            if (idx >= 0) {
-                wrapperPrefix = wrapperLocalName.substring(0, idx);
-                wrapperLocalName = wrapperLocalName.substring(idx + 1);
-            }
-
-            if (!wrapperLocalName.isEmpty()) {
-                gen.writeFieldName(wrapperLocalName);
-                gen.writeStartObject();
-            }
-        }
-
+        // writeFieldName will remove prefix of next name.
         gen.writeFieldName(_name);
 
-        if (gen instanceof TokenBuffer && ser instanceof NamespaceXmlBeanSerializer) {
-            if (_typeSerializer == null) {
-                ((NamespaceXmlBeanSerializer) ser).serialize(value, gen, prov, _xmlName);
-            } else {
-                ((NamespaceXmlBeanSerializer) ser).serializeWithType(value, gen, prov, _typeSerializer, _xmlName);
-            }
+        // reset next name to restore prefix.
+        ((NamespaceXmlBeanToXmlGenerator) gen).setNextName(_xmlName);
+
+        if (_typeSerializer == null) {
+            ser.serialize(value, gen, prov);
         } else {
-            if (gen instanceof TokenBuffer &&
-                (!_xmlName.getPrefix().isEmpty() || !_xmlName.getNamespaceURI().isEmpty())) {
-                gen.writeStartObject();
-                gen.writeFieldName(XmlUtil.COMPLEX_NODE_TEXT_TAG);
-            }
-
-            if (_typeSerializer == null) {
-                ser.serialize(value, gen, prov);
-            } else {
-                ser.serializeWithType(value, gen, prov, _typeSerializer);
-            }
-
-            if (gen instanceof TokenBuffer &&
-                (!_xmlName.getPrefix().isEmpty() || !_xmlName.getNamespaceURI().isEmpty())) {
-                if (!_xmlName.getPrefix().isEmpty()) {
-                    gen.writeFieldName(XmlUtil.NAMESPACE_PREFIX_TAG);
-                    gen.writeString(_xmlName.getPrefix());
-                }
-                
-                if (!_xmlName.getNamespaceURI().isEmpty()) {
-                    gen.writeFieldName(XmlUtil.NAMESPACES_TAG);
-                    gen.writeStartObject();
-                    gen.writeFieldName(_xmlName.getPrefix());
-                    gen.writeString(_xmlName.getNamespaceURI());
-                    gen.writeEndObject();
-                }
-                gen.writeEndObject();
-            }
-        }
-
-        if (!wrapperLocalName.isEmpty()) {
-            if (!wrapperPrefix.isEmpty()) {
-                gen.writeFieldName(XmlUtil.NAMESPACE_PREFIX_TAG);
-                gen.writeString(wrapperPrefix);
-            }
-
-            if (wrapperNamespace != null && !wrapperNamespace.isEmpty()) {
-                gen.writeFieldName(XmlUtil.NAMESPACES_TAG);
-                gen.writeStartObject();
-                gen.writeFieldName(wrapperPrefix);
-                gen.writeString(wrapperNamespace);
-                gen.writeEndObject();
-            }
-            gen.writeEndObject();
+            ser.serializeWithType(value, gen, prov, _typeSerializer);
         }
     }
+
 }
