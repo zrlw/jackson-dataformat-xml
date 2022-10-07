@@ -79,8 +79,9 @@ public class ObjectMapXmlMapper extends XmlMapper {
             MapComplex = new HashMap<String, Object>();
 
             // namespace prefix
-            if (StringUtils.isNotBlank(element.getNamespacePrefix())) {
-                MapComplex.put(XmlUtil.NAMESPACE_PREFIX_TAG, element.getNamespacePrefix());
+            String elementPrefix = element.getNamespacePrefix();
+            if (!elementPrefix.isEmpty()) {
+                MapComplex.put(XmlUtil.NAMESPACE_PREFIX_TAG, elementPrefix);
             }
 
             // declared namespaces
@@ -88,7 +89,15 @@ public class ObjectMapXmlMapper extends XmlMapper {
                 Map<String, Object> namespaceMap = new HashMap<String, Object>();
                 MapComplex.put(XmlUtil.NAMESPACES_TAG, namespaceMap);
                 for (Namespace namespace : strippedNamespaceList) {
-                    namespaceMap.put(namespace.getPrefix(), namespace.getURI());
+                    String prefix = namespace.getPrefix();
+                    if (prefix.isEmpty()) {
+                        prefix = XmlUtil.DEFAULT_NAMESPACE_PREFIX + namespace.getURI().hashCode();
+                        if (elementPrefix.isEmpty()) {
+                            elementPrefix = prefix;
+                            MapComplex.put(XmlUtil.NAMESPACE_PREFIX_TAG, elementPrefix);
+                        }
+                    }
+                    namespaceMap.put(prefix, namespace.getURI());
                 }
             }
 
