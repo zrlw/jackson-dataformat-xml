@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
+import javax.xml.namespace.QName;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 
@@ -28,6 +29,33 @@ public class NamespaceXmlBeanToXmlGenerator extends ToXmlGenerator {
 
     public String getNamespace(String prefix) {
         return namespaceMap.get(prefix);
+    }
+
+    @Override
+    public void startWrappedValue(QName wrapperName, QName wrappedName) throws IOException
+    {
+        if (wrapperName != null) {
+            try {
+                if (_xmlPrettyPrinter != null) {
+                    _xmlPrettyPrinter.writeStartElement(_xmlWriter,
+                            wrapperName.getNamespaceURI(), wrapperName.getLocalPart());
+                } else {
+                    if (!wrapperName.getPrefix().isEmpty() && !wrapperName.getNamespaceURI().isEmpty()) {
+                        namespaceMap.put(wrapperName.getPrefix(), wrapperName.getNamespaceURI());
+                        _xmlWriter.setPrefix(wrapperName.getPrefix(), wrapperName.getNamespaceURI());
+                    }
+                    if (wrapperName.getPrefix().isEmpty()) {
+                        _xmlWriter.writeStartElement(wrapperName.getNamespaceURI(), wrapperName.getLocalPart());
+                    } else {
+                        _xmlWriter.writeStartElement(wrapperName.getPrefix(), wrapperName.getLocalPart(),
+                                wrapperName.getNamespaceURI());
+                    }
+                }
+            } catch (XMLStreamException e) {
+                StaxUtil.throwAsGenerationException(e, this);
+            }
+        }
+        this.setNextName(wrappedName);
     }
 
     @Override

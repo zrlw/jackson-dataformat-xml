@@ -45,6 +45,7 @@ public class ObjectMapXmlMapper extends XmlMapper {
         _deserializationConfig = _deserializationConfig
             .with(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY)
             .without(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+            .with(DeserializationFeature.UNWRAP_ROOT_VALUE)
             .with(new NamespaceXmlAnnotationIntrospector());
 
         setSerializationInclusion(Include.NON_NULL);

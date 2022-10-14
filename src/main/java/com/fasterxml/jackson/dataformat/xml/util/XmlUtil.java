@@ -2,7 +2,6 @@ package com.fasterxml.jackson.dataformat.xml.util;
 
 import java.lang.reflect.Field;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -82,26 +81,11 @@ public class XmlUtil {
     }
 
     public static <T> T objectMapToObject(Map<String, Object> objectMap, Class<T> clazz) throws Exception {
-        return OBJECTMAP_XML_MAPPER.readValue(objectToBytes(getValueMap(objectMap)), clazz);
+        return OBJECTMAP_XML_MAPPER.readValue(objectToBytes(objectMap), clazz);
     }
 
     public static <T> T objectMapToObject(Map<String, Object> objectMap, TypeReference<T> typeReference) throws Exception {
-        return OBJECTMAP_XML_MAPPER.readValue(objectToBytes(getValueMap(objectMap)), typeReference);
-    }
-
-    @SuppressWarnings("unchecked")
-    private static Map<String, Object> getValueMap(Map<String, Object> objectMap) {
-        Map<String, Object> valueMap = null;
-        for (Entry<String, Object> entry : objectMap.entrySet()) {
-            if (entry.getKey().equals(NAMESPACES_TAG)
-                    || entry.getKey().equals(NAMESPACE_PREFIX_TAG)
-                    || entry.getKey().equals(ATTRIBUTES_TAG)) {
-                continue;
-            }
-            valueMap = (Map<String, Object>) entry.getValue();
-            break;
-        }
-        return valueMap;
+        return OBJECTMAP_XML_MAPPER.readValue(objectToBytes(objectMap), typeReference);
     }
 
     @SuppressWarnings("unchecked")

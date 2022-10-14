@@ -1,5 +1,8 @@
  package com.fasterxml.jackson.dataformat.xml.testutil;
 
+import java.util.List;
+
+import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
 
@@ -11,8 +14,9 @@ import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
 public class MyStudent {
     private String name;
     
-    @JacksonXmlProperty(localName = "SchoolName")
-    private String school;
+    @JacksonXmlElementWrapper(localName = "def:Schools", namespace = "http://def")
+    @JacksonXmlProperty(localName = "School")
+    private List<String> schools;
     
     @JacksonXmlProperty(localName = "xyz:FeeA", namespace = "http://xyz")
     private MyCurrency fee1;
@@ -44,12 +48,12 @@ public class MyStudent {
         this.fee2 = fee;
     }
 
-    public String getSchool() {
-        return school;
+    public List<String> getSchools() {
+        return schools;
     }
 
-    public void setSchool(String school) {
-        this.school = school;
+    public void setSchools(List<String> schools) {
+        this.schools = schools;
     }
 
     @Override
@@ -59,8 +63,8 @@ public class MyStudent {
             hashcode = name.hashCode() * 31 * 31 * 31;
         }
         
-        if (school != null) {
-            hashcode += school.hashCode() * 31 * 31;
+        if (schools != null) {
+            hashcode += schools.hashCode() * 31 * 31;
         }
 
         if (fee1 != null) {
@@ -89,11 +93,11 @@ public class MyStudent {
             return false;
         }
 
-        if (my1.school == null) {
-            if (this.school != null) {
+        if (my1.schools == null) {
+            if (this.schools != null) {
                 return false;
             }
-        } else if (!my1.school.equals(this.school)) {
+        } else if (!my1.schools.equals(this.schools)) {
             return false;
         }
         

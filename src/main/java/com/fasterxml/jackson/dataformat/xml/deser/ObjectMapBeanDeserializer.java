@@ -1,7 +1,9 @@
  package com.fasterxml.jackson.dataformat.xml.deser;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -20,6 +22,9 @@ import com.fasterxml.jackson.databind.deser.SettableBeanProperty;
 import com.fasterxml.jackson.databind.deser.impl.BeanPropertyMap;
 import com.fasterxml.jackson.databind.deser.impl.MethodProperty;
 import com.fasterxml.jackson.databind.deser.std.DelegatingDeserializer;
+import com.fasterxml.jackson.databind.deser.std.StringCollectionDeserializer;
+import com.fasterxml.jackson.databind.deser.std.StringDeserializer;
+import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
 import com.fasterxml.jackson.dataformat.xml.util.XmlUtil;
 
@@ -78,9 +83,11 @@ public class ObjectMapBeanDeserializer extends BeanDeserializer {
                         // skip value of namespace
                         p.nextToken();
                     } while ((propName = p.nextFieldName()) != null);
+                    propName = p.nextFieldName();
                     continue;
                 } else if (propName.equals(XmlUtil.NAMESPACE_PREFIX_TAG)) {
                     // skip value of NAMESPACE_PREFIX_TAG
+                    propName = p.nextFieldName();
                     continue;
                 } else if (propName.equals(XmlUtil.ATTRIBUTES_TAG)) {
                     // skip START_OBJECT of ATTRIBUTES_TAG
@@ -115,12 +122,14 @@ public class ObjectMapBeanDeserializer extends BeanDeserializer {
                         }
                         handleUnknownVanilla(p, ctxt, bean, propName);
                     } while ((propName = p.nextFieldName()) != null);
+                    propName = p.nextFieldName();
                     continue;
                 }
                 
                 SettableBeanProperty prop = _beanProperties.find(propName);
 
                 if (prop != null) { // normal case
+                    boolean isWrapped = false;
                     boolean isComplex = false;
                     JsonDeserializer<Object> deser = prop.getValueDeserializer();
                     if (prop instanceof MethodProperty
@@ -128,6 +137,14 @@ public class ObjectMapBeanDeserializer extends BeanDeserializer {
                         && !(deser instanceof DelegatingDeserializer
                             && ((DelegatingDeserializer) deser).getDelegatee() instanceof ObjectMapBeanDeserializer)) {
                         MethodProperty methodProp = (MethodProperty) prop;
+                        JacksonXmlElementWrapper wrapperProp = methodProp.getAnnotation(JacksonXmlElementWrapper.class);
+                        if (wrapperProp != null) {
+                            if (!StringUtils.isEmpty(wrapperProp.localName())) {
+                                isWrapped = true;
+                                skipNamespaceTags(p, true);
+                            }
+                        }
+                        
                         JacksonXmlProperty xmlProp = methodProp.getAnnotation(JacksonXmlProperty.class);
                         if (xmlProp == null) {
                             JsonProperty jsonProp = methodProp.getAnnotation(JsonProperty.class);
@@ -146,50 +163,106 @@ public class ObjectMapBeanDeserializer extends BeanDeserializer {
                             }
                         }
                         
-                        if (isComplex) {
-                            // skip START_OBJECT of complex node
-                            p.nextToken();
-                            propName = p.currentName();
-                            p.nextToken();
-                            while (propName != null && propName != XmlUtil.COMPLEX_NODE_TEXT_TAG) {
-                                propName = p.nextFieldName();
-                            }
-                        }
                     }
                     
-                    try {
-                        prop.deserializeAndSet(p, ctxt, bean);
+                    if (deser.getClass() == StringDeserializer.class) {
                         if (isComplex) {
-                            p.nextToken();
-                            do {
-                                propName = p.currentName();
-                                p.nextToken();
-                                if (propName.equals(XmlUtil.NAMESPACES_TAG)) {
-                                    // skip START_OBJECT of NAMESPACES_TAG
-                                    p.nextToken();
-                                    // get namespace name
-                                    propName = p.currentName();
-                                    do {
-                                        // skip value of namespace
-                                        p.nextToken();
-                                    } while ((propName = p.nextFieldName()) != null);
-                                    continue;
-                                } else if (propName.equals(XmlUtil.NAMESPACE_PREFIX_TAG)) {
-                                    // skip value of NAMESPACE_PREFIX_TAG
-                                    continue;
-                                }
-                            } while (p.nextToken() != JsonToken.END_OBJECT);
+                            skipNamespaceTags(p, true);
                         }
-                    } catch (Exception e) {
-                        wrapAndThrow(e, bean, propName, ctxt);
+
+                        try {
+                            prop.deserializeAndSet(p, ctxt, bean);
+
+                            if (isComplex) {
+                                skipNamespaceTags(p, false);
+                            }
+                        } catch (Exception e) {
+                            wrapAndThrow(e, bean, propName, ctxt);
+                        }
+
+                        if (isWrapped) {
+                            skipNamespaceTags(p, false);
+                        }
+                        propName = p.nextFieldName();
+                    } else if (prop instanceof MethodProperty && deser.getClass() == StringCollectionDeserializer.class) {
+                        List<String> valueList = new ArrayList<>();
+                        String currentName = p.currentName(); 
+                        while (p.currentToken() != JsonToken.END_OBJECT) {                            
+                            if (isComplex) {
+                                skipNamespaceTags(p, true);
+                            }
+                            String value = p.getValueAsString();
+                            valueList.add(value);
+                            if (isComplex) {
+                                skipNamespaceTags(p, false);
+                            }
+                            if (p.nextToken() == JsonToken.FIELD_NAME && currentName.equals(p.currentName())) {
+                                p.nextToken();
+                                continue;
+                            }
+                            propName = p.currentName();
+                            break;
+                        }
+                        ((MethodProperty) prop).set(bean, valueList);
+                        
+                        if (isWrapped) {
+                            if (p.currentToken() == JsonToken.FIELD_NAME) {
+                                do {
+                                    p.nextToken();
+                                    propName = p.currentName();
+                                    if (propName.equals(XmlUtil.NAMESPACES_TAG)) {
+                                        p.nextToken();
+                                        propName = p.currentName();
+                                        do {
+                                            p.nextToken();
+                                        } while ((propName = p.nextFieldName()) != null);
+                                        continue;
+                                    } else if (propName.equals(XmlUtil.NAMESPACE_PREFIX_TAG)) {
+                                        continue;
+                                    }
+                                } while (p.nextToken() != JsonToken.END_OBJECT);
+                            }
+                            propName = p.nextFieldName();
+                        }
+                    } else {
+                        try {
+                            prop.deserializeAndSet(p, ctxt, bean);
+                        } catch (Exception e) {
+                            wrapAndThrow(e, bean, propName, ctxt);
+                        }
+                        
+                        if (isWrapped) {
+                            skipNamespaceTags(p, false);
+                        }
+                        propName = p.nextFieldName();
                     }
                     
                     continue;
                 }
                 handleUnknownVanilla(p, ctxt, bean, propName);
-            } while ((propName = p.nextFieldName()) != null);
+                propName = p.nextFieldName();
+            } while (propName != null);
         }
         return bean;
     }
 
+    private void skipNamespaceTags(JsonParser p, boolean skipPrefix) throws IOException {
+        String propName = null;
+        while (p.nextToken() != JsonToken.END_OBJECT) {
+            propName = p.currentName();
+            p.nextToken();
+            if (propName.equals(XmlUtil.NAMESPACES_TAG)) {
+                p.nextToken();
+                propName = p.currentName();
+                do {
+                    p.nextToken();
+                } while ((propName = p.nextFieldName()) != null);
+                continue;
+            } else if (propName.equals(XmlUtil.NAMESPACE_PREFIX_TAG)) {
+                continue;
+            } else if (skipPrefix) {
+                break;
+            }
+        }        
+    }
 }

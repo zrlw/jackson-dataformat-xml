@@ -1,5 +1,8 @@
  package com.fasterxml.jackson.dataformat.xml.ser;
 
+import java.io.IOException;
+import java.util.List;
+
 import javax.xml.namespace.QName;
 
 import com.fasterxml.jackson.core.JsonGenerator;
@@ -7,7 +10,9 @@ import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.PropertyName;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.ser.BeanPropertyWriter;
+import com.fasterxml.jackson.databind.ser.impl.IndexedStringListSerializer;
 import com.fasterxml.jackson.databind.ser.impl.PropertySerializerMap;
+import com.fasterxml.jackson.databind.ser.std.StringSerializer;
 import com.fasterxml.jackson.dataformat.xml.util.XmlUtil;
 
 /**
@@ -29,6 +34,7 @@ public class NamespaceXmlBeanTokenBufferWriter extends BeanPropertyWriter {
         return _xmlName;
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public void serializeAsField(Object bean, JsonGenerator gen,
             SerializerProvider prov) throws Exception {
@@ -99,7 +105,7 @@ public class NamespaceXmlBeanTokenBufferWriter extends BeanPropertyWriter {
             } else {
                 ((NamespaceXmlBeanSerializer) ser).serializeWithType(value, gen, prov, _typeSerializer, _xmlName);
             }
-        } else {
+        } else if (ser instanceof StringSerializer) {
             if (!_xmlName.getPrefix().isEmpty() || !_xmlName.getNamespaceURI().isEmpty()) {
                 gen.writeStartObject();
                 gen.writeFieldName(XmlUtil.COMPLEX_NODE_TEXT_TAG);
@@ -131,6 +137,18 @@ public class NamespaceXmlBeanTokenBufferWriter extends BeanPropertyWriter {
                 }
                 gen.writeEndObject();
             }
+        } else if (ser.getClass() == IndexedStringListSerializer.class) {
+            List<String> listValue = (List<String>) value;
+            final int len = listValue.size();
+            gen.writeStartArray(value, len);
+            serializeArrayContents(listValue, gen, prov, len);
+            gen.writeEndArray();
+        } else {
+            if (_typeSerializer == null) {
+                ser.serialize(value, gen, prov);
+            } else {
+                ser.serializeWithType(value, gen, prov, _typeSerializer);
+            }
         }
 
         if (!wrapperLocalName.isEmpty()) {
@@ -154,4 +172,42 @@ public class NamespaceXmlBeanTokenBufferWriter extends BeanPropertyWriter {
         }
     }
 
+    private void serializeArrayContents(List<String> value, JsonGenerator g,
+            SerializerProvider provider, int len) throws IOException
+    {
+        for (int i = 0; i < len; ++i) {
+            String str = value.get(i);
+            if (str == null) {
+                provider.defaultSerializeNull(g);
+            } else {
+                if (!_xmlName.getPrefix().isEmpty() || !_xmlName.getNamespaceURI().isEmpty()) {
+                    g.writeStartObject();
+                    g.writeFieldName(XmlUtil.COMPLEX_NODE_TEXT_TAG);
+                }
+                
+                g.writeString(str);
+                
+                if (!_xmlName.getPrefix().isEmpty() || !_xmlName.getNamespaceURI().isEmpty()) {
+                    String prefix = _xmlName.getPrefix();
+                    if (!prefix.isEmpty()) {
+                        g.writeFieldName(XmlUtil.NAMESPACE_PREFIX_TAG);
+                        g.writeString(prefix);
+                    } else if (!_xmlName.getNamespaceURI().isEmpty()) {
+                        prefix = XmlUtil.DEFAULT_NAMESPACE_PREFIX + _xmlName.getNamespaceURI().hashCode();
+                        g.writeFieldName(XmlUtil.NAMESPACE_PREFIX_TAG);
+                        g.writeString(prefix);
+                    }
+
+                    if (!_xmlName.getNamespaceURI().isEmpty()) {
+                        g.writeFieldName(XmlUtil.NAMESPACES_TAG);
+                        g.writeStartObject();
+                        g.writeFieldName(prefix);
+                        g.writeString(_xmlName.getNamespaceURI());
+                        g.writeEndObject();
+                    }
+                    g.writeEndObject();
+                }            
+            }
+        }        
+    }
 }
