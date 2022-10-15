@@ -97,7 +97,15 @@ public class NamespaceXmlBeanPropertyWriter extends BeanPropertyWriter {
         }
 
         final NamespaceXmlBeanToXmlGenerator xmlGen = (NamespaceXmlBeanToXmlGenerator) gen;
-        xmlGen.startWrappedValue(_wrapperQName, _xmlName);
+        if (_wrapperQName != null) {
+            if (!_wrapperQName.getPrefix().isEmpty() && _wrapperQName.getNamespaceURI().isEmpty()) {
+                String namespace = xmlGen.getNamespace(_wrapperQName.getPrefix());
+                if (namespace != null) {
+                    _wrapperQName = new QName(namespace, _wrapperQName.getLocalPart(), _wrapperQName.getPrefix());
+                }
+            }
+            xmlGen.startWrappedValue(_wrapperQName, _xmlName);
+        }
 
         // writeFieldName will remove prefix of next name.
         xmlGen.writeFieldName(_name);
@@ -117,7 +125,9 @@ public class NamespaceXmlBeanPropertyWriter extends BeanPropertyWriter {
             ser.serializeWithType(value, xmlGen, prov, _typeSerializer);
         }
 
-        xmlGen.finishWrappedValue(_wrapperQName, _xmlName);
+        if (_wrapperQName != null) {
+            xmlGen.finishWrappedValue(_wrapperQName, _xmlName);
+        }
     }
 
 }
