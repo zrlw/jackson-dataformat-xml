@@ -2,14 +2,13 @@
 
 import javax.xml.namespace.QName;
 
-import org.apache.commons.lang3.StringUtils;
-
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.PropertyName;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.ser.BeanPropertyWriter;
 import com.fasterxml.jackson.databind.ser.impl.PropertySerializerMap;
+import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
 
 /**
  * @author zrlw@sina.com
@@ -25,17 +24,21 @@ public class NamespaceXmlBeanPropertyWriter extends BeanPropertyWriter {
 
     public NamespaceXmlBeanPropertyWriter(BeanPropertyWriter base, QName xmlName) {
         super(base, new PropertyName(xmlName.getLocalPart(), xmlName.getNamespaceURI()));
-        if (_wrapperName == null || StringUtils.isEmpty(_wrapperName.getSimpleName())) {
+        JacksonXmlElementWrapper wrapperProp = base.getAnnotation(JacksonXmlElementWrapper.class);
+        if (wrapperProp == null) {
             _wrapperQName = null;
         } else {
-            String simpleName = _wrapperName.getSimpleName();
+            String simpleName = wrapperProp.localName();
+            if (simpleName.isEmpty()) {
+                simpleName = xmlName.getLocalPart();
+            }
             String prefix = "";
             int idx = simpleName.indexOf(':');
             if (idx >= 0) {
                 prefix = simpleName.substring(0, idx);
                 simpleName = simpleName.substring(idx + 1);
             }
-            _wrapperQName = new QName(_wrapperName.getNamespace(), simpleName, prefix);
+            _wrapperQName = new QName(wrapperProp.namespace(), simpleName, prefix);
         }
         this._xmlName = xmlName;
     }
@@ -93,14 +96,11 @@ public class NamespaceXmlBeanPropertyWriter extends BeanPropertyWriter {
             }
         }
 
-        final NamespaceXmlBeanToXmlGenerator xmlGen = (gen instanceof NamespaceXmlBeanToXmlGenerator)
-                ? (NamespaceXmlBeanToXmlGenerator) gen : null;
-        if (xmlGen != null) {
-            xmlGen.startWrappedValue(_wrapperQName, _xmlName);            
-        }
+        final NamespaceXmlBeanToXmlGenerator xmlGen = (NamespaceXmlBeanToXmlGenerator) gen;
+        xmlGen.startWrappedValue(_wrapperQName, _xmlName);
 
         // writeFieldName will remove prefix of next name.
-        gen.writeFieldName(_name);
+        xmlGen.writeFieldName(_name);
 
         // reset next name to restore prefix.
         if (!_xmlName.getPrefix().isEmpty() && _xmlName.getNamespaceURI().isEmpty()) {
@@ -109,17 +109,15 @@ public class NamespaceXmlBeanPropertyWriter extends BeanPropertyWriter {
                 _xmlName = new QName(namespace, _xmlName.getLocalPart(), _xmlName.getPrefix());
             }
         }
-        ((NamespaceXmlBeanToXmlGenerator) gen).setNextName(_xmlName);
+        xmlGen.setNextName(_xmlName);
 
         if (_typeSerializer == null) {
-            ser.serialize(value, gen, prov);
+            ser.serialize(value, xmlGen, prov);
         } else {
-            ser.serializeWithType(value, gen, prov, _typeSerializer);
+            ser.serializeWithType(value, xmlGen, prov, _typeSerializer);
         }
 
-        if (xmlGen != null) {
-            xmlGen.finishWrappedValue(_wrapperQName, _xmlName);            
-        }
+        xmlGen.finishWrappedValue(_wrapperQName, _xmlName);
     }
 
 }

@@ -139,10 +139,8 @@ public class ObjectMapBeanDeserializer extends BeanDeserializer {
                         MethodProperty methodProp = (MethodProperty) prop;
                         JacksonXmlElementWrapper wrapperProp = methodProp.getAnnotation(JacksonXmlElementWrapper.class);
                         if (wrapperProp != null) {
-                            if (!StringUtils.isEmpty(wrapperProp.localName())) {
-                                isWrapped = true;
-                                skipNamespaceTags(p, true);
-                            }
+                            isWrapped = true;
+                            skipNamespaceTags(p, true);
                         }
                         
                         JacksonXmlProperty xmlProp = methodProp.getAnnotation(JacksonXmlProperty.class);
@@ -186,8 +184,8 @@ public class ObjectMapBeanDeserializer extends BeanDeserializer {
                         propName = p.nextFieldName();
                     } else if (prop instanceof MethodProperty && deser.getClass() == StringCollectionDeserializer.class) {
                         List<String> valueList = new ArrayList<>();
-                        String currentName = p.currentName(); 
-                        while (p.currentToken() != JsonToken.END_OBJECT) {                            
+                        String currentName = p.currentName();
+                        while (p.currentToken() != JsonToken.END_OBJECT) {
                             if (isComplex) {
                                 skipNamespaceTags(p, true);
                             }
@@ -263,6 +261,6 @@ public class ObjectMapBeanDeserializer extends BeanDeserializer {
             } else if (skipPrefix) {
                 break;
             }
-        }        
+        }
     }
 }
