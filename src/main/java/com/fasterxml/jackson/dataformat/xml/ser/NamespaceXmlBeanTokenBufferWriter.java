@@ -51,7 +51,12 @@ public class NamespaceXmlBeanTokenBufferWriter extends BeanPropertyWriter {
             }
             _wrapperQName = new QName(wrapperProp.namespace(), simpleName, prefix);
         }
-        this._xmlName = xmlName;
+        if (xmlName.getPrefix().isEmpty() && !xmlName.getNamespaceURI().isEmpty()) {
+            String prefix = XmlUtil.DEFAULT_NAMESPACE_PREFIX + xmlName.getNamespaceURI().hashCode();
+            this._xmlName = new QName(xmlName.getNamespaceURI(), xmlName.getLocalPart(), prefix);
+        } else {
+            this._xmlName = xmlName;
+        }
     }
 
     public QName getXmlName() {
@@ -116,7 +121,7 @@ public class NamespaceXmlBeanTokenBufferWriter extends BeanPropertyWriter {
                 ((NamespaceXmlBeanSerializer) ser).serializeWithType(value, gen, prov, _typeSerializer, _xmlName);
             }
         } else if (ser instanceof StringSerializer) {
-            if (!_xmlName.getPrefix().isEmpty() || !_xmlName.getNamespaceURI().isEmpty()) {
+            if (!_xmlName.getPrefix().isEmpty()) {
                 gen.writeStartObject();
                 gen.writeFieldName(XmlUtil.COMPLEX_NODE_TEXT_TAG);
             }
@@ -127,21 +132,14 @@ public class NamespaceXmlBeanTokenBufferWriter extends BeanPropertyWriter {
                 ser.serializeWithType(value, gen, prov, _typeSerializer);
             }
 
-            if (!_xmlName.getPrefix().isEmpty() || !_xmlName.getNamespaceURI().isEmpty()) {
-                String prefix = _xmlName.getPrefix();
-                if (!prefix.isEmpty()) {
-                    gen.writeFieldName(XmlUtil.NAMESPACE_PREFIX_TAG);
-                    gen.writeString(prefix);
-                } else if (!_xmlName.getNamespaceURI().isEmpty()) {
-                    prefix = XmlUtil.DEFAULT_NAMESPACE_PREFIX + _xmlName.getNamespaceURI().hashCode();
-                    gen.writeFieldName(XmlUtil.NAMESPACE_PREFIX_TAG);
-                    gen.writeString(prefix);
-                }
-                
+            if (!_xmlName.getPrefix().isEmpty()) {
+                gen.writeFieldName(XmlUtil.NAMESPACE_PREFIX_TAG);
+                gen.writeString(_xmlName.getPrefix());
+
                 if (!_xmlName.getNamespaceURI().isEmpty()) {
                     gen.writeFieldName(XmlUtil.NAMESPACES_TAG);
                     gen.writeStartObject();
-                    gen.writeFieldName(prefix);
+                    gen.writeFieldName(_xmlName.getPrefix());
                     gen.writeString(_xmlName.getNamespaceURI());
                     gen.writeEndObject();
                 }
@@ -186,28 +184,21 @@ public class NamespaceXmlBeanTokenBufferWriter extends BeanPropertyWriter {
             if (str == null) {
                 provider.defaultSerializeNull(g);
             } else {
-                if (!_xmlName.getPrefix().isEmpty() || !_xmlName.getNamespaceURI().isEmpty()) {
+                if (!_xmlName.getPrefix().isEmpty()) {
                     g.writeStartObject();
                     g.writeFieldName(XmlUtil.COMPLEX_NODE_TEXT_TAG);
                 }
                 
                 g.writeString(str);
                 
-                if (!_xmlName.getPrefix().isEmpty() || !_xmlName.getNamespaceURI().isEmpty()) {
-                    String prefix = _xmlName.getPrefix();
-                    if (!prefix.isEmpty()) {
-                        g.writeFieldName(XmlUtil.NAMESPACE_PREFIX_TAG);
-                        g.writeString(prefix);
-                    } else if (!_xmlName.getNamespaceURI().isEmpty()) {
-                        prefix = XmlUtil.DEFAULT_NAMESPACE_PREFIX + _xmlName.getNamespaceURI().hashCode();
-                        g.writeFieldName(XmlUtil.NAMESPACE_PREFIX_TAG);
-                        g.writeString(prefix);
-                    }
+                if (!_xmlName.getPrefix().isEmpty()) {
+                    g.writeFieldName(XmlUtil.NAMESPACE_PREFIX_TAG);
+                    g.writeString(_xmlName.getPrefix());
 
                     if (!_xmlName.getNamespaceURI().isEmpty()) {
                         g.writeFieldName(XmlUtil.NAMESPACES_TAG);
                         g.writeStartObject();
-                        g.writeFieldName(prefix);
+                        g.writeFieldName(_xmlName.getPrefix());
                         g.writeString(_xmlName.getNamespaceURI());
                         g.writeEndObject();
                     }
