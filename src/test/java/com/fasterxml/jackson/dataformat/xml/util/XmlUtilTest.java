@@ -1,4 +1,4 @@
- package com.fasterxml.jackson.dataformat.xml.util;
+package com.fasterxml.jackson.dataformat.xml.util;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -20,28 +20,28 @@ import junit.framework.TestCase;
  */
 public class XmlUtilTest extends TestCase {
 
-     public void testXmlUtil() throws Exception {
-         MyEnvelope<MyStudent> myEnvelope = new MyEnvelope<MyStudent>();
-         MyCurrency myFee1 = new MyCurrency();
-         myFee1.setCcy("USD");
-         myFee1.setAmt("1.00");
-         MyCurrency myFee2 = new MyCurrency();
-         myFee2.setCcy("EUR");
-         myFee2.setAmt("2.00");
-         MyStudent myStudent = new MyStudent();
-         myStudent.setName("nameA");
-         List<String> schools = new ArrayList<>();
-         schools.add("schoolA");
-         schools.add("schoolB");
-         myStudent.setSchools(schools);
-         myStudent.setFee1(myFee1);
-         myStudent.setFee2(myFee2);
-         MyPacketBody<MyStudent> myBody = new MyPacketBody<MyStudent>();
-         myBody.setT(myStudent);
-         myEnvelope.setTitle("titleA");
-         myEnvelope.setBody(myBody);
- 
-         TypeReference<MyEnvelope<MyStudent>> myTypeReference = new TypeReference<MyEnvelope<MyStudent>>() {};
+    public void testXmlUtil() throws Exception {
+        MyEnvelope<MyStudent> myEnvelope = new MyEnvelope<MyStudent>();
+        MyCurrency myFee1 = new MyCurrency();
+        myFee1.setCcy("USD");
+        myFee1.setAmt("1.00");
+        MyCurrency myFee2 = new MyCurrency();
+        myFee2.setCcy("EUR");
+        myFee2.setAmt("2.00");
+        MyStudent myStudent = new MyStudent();
+        myStudent.setName("nameA");
+        List<String> schools = new ArrayList<>();
+        schools.add("schoolA");
+        schools.add("schoolB");
+        myStudent.setSchools(schools);
+        myStudent.setFee1(myFee1);
+        myStudent.setFee2(myFee2);
+        MyPacketBody<MyStudent> myBody = new MyPacketBody<MyStudent>();
+        myBody.setT(myStudent);
+        myEnvelope.setTitle("titleA");
+        myEnvelope.setBody(myBody);
+
+        TypeReference<MyEnvelope<MyStudent>> myTypeReference = new TypeReference<MyEnvelope<MyStudent>>() {};
 
         MyEnvelope<MyStudent> myEnvelope1 = null;
         String envelopeXml = XmlUtil.objectToXml(myEnvelope);
@@ -66,6 +66,6 @@ public class XmlUtilTest extends TestCase {
         bytes = XmlUtil.objectToBytes(myEnvelope);
         myEnvelope1 = XmlUtil.bytesToObject(bytes, myTypeReference);
         Assert.assertTrue(myEnvelope.equals(myEnvelope1));
-     }
+    }
 
 }
