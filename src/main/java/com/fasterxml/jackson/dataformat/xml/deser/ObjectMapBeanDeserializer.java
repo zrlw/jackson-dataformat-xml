@@ -206,8 +206,8 @@ public class ObjectMapBeanDeserializer extends BeanDeserializer {
                         if (isWrapped) {
                             if (p.currentToken() == JsonToken.FIELD_NAME) {
                                 do {
-                                    p.nextToken();
                                     propName = p.currentName();
+                                    p.nextToken();
                                     if (propName.equals(XmlUtil.NAMESPACES_TAG)) {
                                         p.nextToken();
                                         propName = p.currentName();
