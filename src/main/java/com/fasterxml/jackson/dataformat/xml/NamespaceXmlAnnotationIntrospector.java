@@ -13,20 +13,33 @@ public class NamespaceXmlAnnotationIntrospector extends JacksonXmlAnnotationIntr
     private static final long serialVersionUID = 4174923868707107806L;
 
     @Override
-    public PropertyName findRootName(AnnotatedClass ac) {
-        PropertyName propertyName = super.findRootName(ac);
-        return removeNamespacePrefix(propertyName);
-    }
-
-    @Override
     public PropertyName findWrapperName(Annotated ann) {
         PropertyName propertyName = super.findWrapperName(ann);
         return removeNamespacePrefix(propertyName);
     }
 
     @Override
+    public PropertyName findRootName(AnnotatedClass ac) {
+        PropertyName propertyName = super.findRootName(ac);
+        return removeNamespacePrefix(propertyName);
+    }
+
+    @Override
+    public PropertyName findNameForSerialization(Annotated a) {
+        PropertyName propertyName = super.findNameForSerialization(a);
+        return removeNamespacePrefix(propertyName);
+    }
+
+    @Override
     public PropertyName findNameForDeserialization(Annotated a) {
         PropertyName propertyName = super.findNameForDeserialization(a);
+        return removeNamespacePrefix(propertyName);
+    }
+
+    @Override
+    protected PropertyName _findXmlName(Annotated a)
+    {
+        PropertyName propertyName = super._findXmlName(a);
         return removeNamespacePrefix(propertyName);
     }
 
